@@ -2,11 +2,7 @@ package com.example.notificationtest;
 
 import android.os.Build;
 
-import com.example.notificationtest.ActionNode;
-import com.example.notificationtest.CalendarEvent;
-import com.example.notificationtest.ClubEvent;
-import com.example.notificationtest.TreeNode;
-
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -14,79 +10,77 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import androidx.annotation.RequiresApi;
 
+/**
+ * Class: TreeDecisionControl. TreeDecisionControl is decision tree class that handles tree construction by entropy calculation for club events and calendar events.
+ * Club events are handled by a tree called club Tree.
+ * Calendar events are handled by a tree called calendar tree.
+ * Creating and restructuring the
+ */
 public class TreeDecisionControl {
-    private Map<CalendarEvent,String> calendarHistory;
-    private ArrayList<ClubEvent> history;
-    private TreeNode rootC;
-    private TreeNode root;
+    private TreeNode rootC; // root for the calendar events decision tree
+    private TreeNode root; // root for the club events decision tree
 
     /**
-     *
+     * This method resets all trees to default state.
+     * Default roots for Club Tree and Calendar Tree have action N for notifying and entropy 10
      */
     public void reset() {
         root = new ActionNode("N",10);
         rootC = new ActionNode("N",10);
-        history = new ArrayList<>();
-        calendarHistory = new HashMap<>();
     }
 
     /**
-     *
+     * This is the class constructor
+     * Two roots are initialized in the constructor.
      */
     public TreeDecisionControl() {
         root = new ActionNode("N",10);
         rootC = new ActionNode("N",10);
-        history = new ArrayList<>();
-        calendarHistory = new HashMap<>();
     }
 
     /**
-     *
-     * @param attribute
-     * @param value
-     * @param pastAction
-     * @return
+     * This method creates a sub list from the input ClubEvent list based on the input attribute and value
+     * @param attribute the target attribute of the club event. This is hardcoded in ClubEvent class in the getAllAttrs method
+     * @param value the value that need to be matched from club event such as Monday, 18:00 and club name
+     * @param pastAction the list that contains all club events for learning
+     * @return the list of all club events that matched the input attribute value
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
-    private static ArrayList<ClubEvent> splitOnAttr(String attribute, String value, ArrayList<ClubEvent> pastAction){
+    private static List<ClubEvent> splitOnAttr(String attribute, String value, List<ClubEvent> pastAction){
 
-        ArrayList<ClubEvent> subTree = new ArrayList<>();
-
+        List<ClubEvent> subTree = new ArrayList<>();
         for (ClubEvent e: pastAction) {
             if ( e.getValue(attribute) .equals(value) ) {
                 subTree.add(e);
             }
         }
-
         return subTree;
     }
 
     /**
-     *
-     * @param attribute
-     * @return
+     * This method finds all values that appeared for the target attribute. For example, Monday, Tuesday, ect for attribute dayofweek
+     * @param attribute the target attribute to find values
+     * @return a string set contains all values appeared in the all events for the target attribute
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
-    private static Set<String> findAllVals(String attribute, ArrayList<ClubEvent> events){
+    private static Set<String> findAllVals(String attribute, List<ClubEvent> events){
 
         Set<String> attrs = new HashSet<>();
 
         for ( ClubEvent e: events ) {
             attrs.add(e.getValue(attribute));
         }
-
         return attrs;
     }
 
-
     /**
-     *
-     * @return
+     * This method calculates the entropy of the input events list based on the distribution of actions including notify, record and delete.
+     * @return the result entropy
      */
-    private static double entropy(ArrayList<ClubEvent> events) {
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private static double entropy(List<ClubEvent> events) {
 
         double result = 0;
         double size = events.size();
@@ -95,13 +89,12 @@ public class TreeDecisionControl {
         double D = 0;
 
         for (ClubEvent e: events) {
-            String action = e.getFlags();
+            String action = e.getAction();
             switch ( action ) {
                 case "N": N++; break;
                 case "R": R++; break;
                 case "D": D++; break;
             }
-
         }
         result = 0;
         if (N > 0) {
@@ -118,19 +111,19 @@ public class TreeDecisionControl {
 
 
     /**
-     *
-     * @return
+     * This method calculates the entropy of each attribute value and returns the attribute with smallest entropy as result
+     * @return the attribute value that has the smallest entropy
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
-    private static String chooseAttr(ArrayList<ClubEvent> events) {
+    private static String chooseAttr(List<ClubEvent> events) {
 
         String bestAttr = "";
-        String[] basicAttrs = {"Date","Time","Conflict"};
-        ArrayList<ClubEvent> subTree = new ArrayList<>();
+        String[] basicAttrs = {"Start","End","clubName","dayOfWeek"};
+        List<ClubEvent> subTree;
         double oldEntropy = entropy(events);
         double bestEntropy = 10;
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < basicAttrs.length; i++) {
             String attr = basicAttrs[i];
             int size = events.size();
             double attrEntropy = 0;
@@ -139,7 +132,6 @@ public class TreeDecisionControl {
             for (String v: Values) {
                 subTree = splitOnAttr(attr,v,events);
                 attrEntropy += entropy(subTree)*subTree.size()/size;
-
             }
 
             if (bestEntropy > attrEntropy) {
@@ -151,96 +143,110 @@ public class TreeDecisionControl {
         if (oldEntropy <= bestEntropy) {
             return null;
         }
-
         return bestAttr;
     }
 
-
     /**
-     *
-     * @param pastAction
-     * @return
+     * This method creates and retrains the club event tree based on the existing club event list if there are more than three events in the list, and returns the root
+     * @param pastAction the list that contains all club events or the sub list of the club event
+     * @return root of the result tree
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
-    private static TreeNode learnTree(ArrayList<ClubEvent> pastAction) {
+    public static TreeNode learnTree(List<ClubEvent> pastAction) {
+        if (pastAction.size() < 2){
+            return TreeNode.defaultAction;
+        }
         double entropy = entropy(pastAction);
         if (entropy <= 0) {
             for (ClubEvent e: pastAction) {
-                return new ActionNode(e.getFlags(),0);
+                return new ActionNode(e.getAction(),0);
             }
-            System.out.println("No Actions");
             return new ActionNode("N",10);
         }
         else {
             String attr = chooseAttr(pastAction);
             if (attr == null) {
-
-                TreeNode range = buildRangeTree(pastAction);
-                if ( range != null ) {
-                    return range;
-                }
-
-                String Action = mostCommonAct(pastAction);
-                return new ActionNode(Action,entropy);
+                return computeDefaultTree(entropy, buildRangeTree(pastAction), mostCommonAct(pastAction));
             }
             DecisionNode deciNode = new DecisionNode(attr);
 
             for (String v: findAllVals(attr,pastAction)) {
-                ArrayList<ClubEvent> subTree = new ArrayList<>();
+                List<ClubEvent> subTree;
                 subTree = splitOnAttr(attr,v,pastAction);
-
+                if ( subTree.size() == pastAction.size()){
+                    return computeDefaultTree(entropy, buildRangeTree(pastAction), mostCommonAct(pastAction));
+                }
                 deciNode.children.put(v, learnTree(subTree));
             }
             return deciNode;
         }
-
     }
 
     /**
-     *
-     * @param pastAction
-     * @return
+     * This method creates the default action node when there are less than three events to learn from or when user action is null
+     * @param entropy entropy of the club event list
+     * @param treeNode the tree node for default use
+     * @param s the action of the default tree
+     * @return the result tree node
+     */
+    private static TreeNode computeDefaultTree(double entropy, TreeNode treeNode, String s) {
+        TreeNode range = treeNode;
+        if (range != null) {
+            return range;
+        }
+
+        String Action = s;
+        return new ActionNode(Action, entropy);
+    }
+
+    /**
+     * This method compares the last two actions from the user to determine whether there is a continuous action from the user.
+     * If a continuous action such as two events with similar attributes had same user action, this action will be set as recommended
+     * to club event tree with entropy 0.2
+     * @param pastAction the club events list
+     * @return the recommended decision node for club event tree
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
-    private static TreeNode buildRangeTree(ArrayList<ClubEvent> pastAction) {
+    private static TreeNode buildRangeTree(List<ClubEvent> pastAction) {
 
         int size = pastAction.size();
         if ( size < 3 ) {
             return null;
         }
 
-        ArrayList<ClubEvent> Events = new ArrayList<>(pastAction);
-        Collections.sort(Events, (a,b)-> a.getTimeStamp() - b.getTimeStamp() );
-        String Action = Events.get(size - 1).getFlags();
-        if ( ! Action .equals( Events.get(size - 2).getFlags() ) ) {
+        List<ClubEvent> Events = new ArrayList<>(pastAction);
+        Collections.sort(Events, (a,b)->  a.getTimeStamp().compareTo(b.getTimeStamp()) );
+        String Action = Events.get(size - 1).getAction();
+        if ( ! Action .equals( Events.get(size - 2).getAction() ) ) {
             return null;
         }
-        int timeStamp = Events.get(size - 2).getTimeStamp();
+        LocalDateTime timeStamp = Events.get(size - 2).getTimeStamp();
         for(int i = size - 3; i > 0; i--) {
             ClubEvent e = Events.get(i);
-            if ( ! e.getFlags() .equals (Action) ) {
+            if ( ! e.getAction() .equals (Action) ) {
                 break;
             }
 
             timeStamp = e.getTimeStamp();
         }
 
-        return new RangeTree(timeStamp,null,new ActionNode(Action,0));
+        return new RangeTree(timeStamp,null,new ActionNode(Action,0.2));
     }
 
 
     /**
-     *
-     * @param pastAction
-     * @return
+     * This method counts the total number of all kinds of actions from user, and return the most common action
+     * @param pastAction the club event list
+     * @return the most common action
      */
-    private static String mostCommonAct(ArrayList<ClubEvent> pastAction) {
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private static String mostCommonAct(List<ClubEvent> pastAction) {
         int nCount = 0;
         int rCount = 0;
         int dCount = 0;
         String a;
         for (ClubEvent e: pastAction) {
-            a = e.getFlags();
+            a = e.getAction();
             switch (a) {
                 case "N" : nCount++; break;
                 case "R" : rCount++; break;
@@ -261,17 +267,14 @@ public class TreeDecisionControl {
     }
 
     /**
-     *
-     * @param event
-     * @param root
-     * @param pastActions
-     * @return
+     * This method creates an action node for the target club event
+     * @param event the club event
+     * @param root the club event decision tree root node
+     * @return the result action node
      */
-    public static String process(ClubEvent event, TreeNode root, ArrayList<ClubEvent> pastActions) {
+    public static ActionNode process(ClubEvent event, TreeNode root) {
         ActionNode action = root.performAction(event);
-
-        pastActions.add(event);
-        return action.getAction();
+        return action;
     }
 
 
@@ -279,24 +282,23 @@ public class TreeDecisionControl {
 
     /*
      *
-     * Secondary Tree for private events off from Club events.
+     * Secondary Tree process learning from calendar events associate with Club events.
      *
      */
 
     /**
-     *
-     * @param attribute
-     * @param value
-     * @param pastAction
-     * @return
+     * This method creates a sub list from the input CalendarEvent list based on the input attribute and value
+     * @param value the word that need to be matched from calendar event such as location, event type grabbed from description
+     * @param pastAction the list that contains all calendar events for learning
+     * @return the list of all calendar events that matched the input word
      */
-    private static Map<CalendarEvent,String> splitOnAttr2(String attribute, String value, Map<CalendarEvent,String> pastAction){
+    private static List<CalendarEvent> splitOnAttrCal(String value, List<CalendarEvent> pastAction){
 
-        Map<CalendarEvent,String> subTree = new HashMap<>();
+        List<CalendarEvent> subTree = new ArrayList<>();
 
-        for (CalendarEvent e: pastAction.keySet()) {
-            if ( e.getValue(attribute) .equals(value) ) {
-                subTree.put(e, pastAction.get(e));
+        for (CalendarEvent e: pastAction) {
+            if ( e.getWords().contains(value) ) {
+                subTree.add(e);
             }
         }
 
@@ -304,17 +306,16 @@ public class TreeDecisionControl {
     }
 
     /**
-     *
-     * @param word
-     * @param actions
-     * @return
+     * This method finds all words that appeared in the calendar event description
+     * @param actions the calendar event list
+     * @return a set of string that contains all different words
      */
-    private static Set<String> findAllWords(String word, Map<CalendarEvent,String> actions){
+    private static Set<String> findAllWords(List<CalendarEvent> actions){
 
         Set<String> words = new HashSet<>();
 
-        for ( CalendarEvent e: actions.keySet() ) {
-            words.add(e.getValue(word));
+        for ( CalendarEvent e: actions ) {
+            words.addAll(e.getWords());
         }
 
         return words;
@@ -326,7 +327,7 @@ public class TreeDecisionControl {
      * @param actions
      * @return
      */
-    private static double entropy2(Map<CalendarEvent,String> actions) {
+    private static double entropyCal(List<CalendarEvent> actions) {
 
         double result = 0;
         double size = actions.size();
@@ -334,8 +335,8 @@ public class TreeDecisionControl {
         double r = 0;
         double d = 0;
 
-        for (CalendarEvent e: actions.keySet()) {
-            String action = actions.get(e);
+        for (CalendarEvent e: actions) {
+            String action = e.getFlags();
             switch ( action ) {
                 case "N": n++; break;
                 case "R": r++; break;
@@ -362,31 +363,30 @@ public class TreeDecisionControl {
      * @param actions
      * @return
      */
-    private static String chooseAttr2(Map<CalendarEvent,String> actions) {
+    private static String chooseAttrCal(List<CalendarEvent> actions) {
 
         String bestAttr = "";
-        String[] basicAttrs = {"attendee","eventTitle"};
-        Map<CalendarEvent,String> subTree = new HashMap<>();
-        double oldEntropy = entropy2(actions);
+        List<CalendarEvent> subTree;
+        List<CalendarEvent> missingTree;
+        double oldEntropy = entropyCal(actions);
         double bestEntropy = 10;
 
-        for (int i = 0; i < 2; i++) {
-            String attr = basicAttrs[i];
-            int size = actions.size();
-            double attrEntropy = 0;
-            Set<String> Values = findAllWords(attr,actions);
+        int size = actions.size();
+        double attrEntropy = 0;
+        Set<String> Values = findAllWords(actions);
 
-            for (String v: Values) {
-                subTree = splitOnAttr2(attr,v,actions);
-                attrEntropy = entropy2(subTree)*subTree.size()/size;
-
-            }
+        for (String v: Values) {
+            subTree = splitOnAttrCal(v,actions);
+            missingTree = new ArrayList<>(actions);
+            missingTree.removeAll(subTree);
+            attrEntropy = entropyCal(subTree)*subTree.size()/size + entropyCal(missingTree)*missingTree.size()/size;
 
             if (bestEntropy > attrEntropy) {
                 bestEntropy = attrEntropy;
-                bestAttr = attr;
+                bestAttr = v;
             }
         }
+
         if (oldEntropy <= bestEntropy) {
             return null;
         }
@@ -400,37 +400,46 @@ public class TreeDecisionControl {
      * @param pastAction
      * @return
      */
-    private static TreeNode learnTree2(Map<CalendarEvent,String> pastAction) {
-        if (entropy2(pastAction) <= 0) {
-            for (CalendarEvent e: pastAction.keySet()) {
-                return new ActionNode(pastAction.get(e),entropy2(pastAction));
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public static TreeNode learnTreeCal(List<CalendarEvent> pastAction) {
+        if (pastAction.size() < 3){
+            return TreeNode.defaultAction;
+        }
+        return learnSubTreeCal(pastAction);
+
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private static TreeNode learnSubTreeCal(List<CalendarEvent> pastAction) {
+        double entropy = entropyCal(pastAction);
+        if (entropy <= 0) {
+            for (CalendarEvent e: pastAction) {
+                return new ActionNode(e.getFlags(), entropyCal(pastAction));
             }
-            System.out.println("No Actions");
             return new ActionNode("N",10);
         }
         else {
-            String attr = chooseAttr2(pastAction);
+            String attr = chooseAttrCal(pastAction);
             if (attr == null) {
+                return computeDefaultTree(entropyCal(pastAction), buildRangeTreeCal(pastAction), mostCommonActCal(pastAction));
+            }
 
-                TreeNode range = buildRangeTree2(pastAction);
-                if ( range != null ) {
-                    return range;
+            for (String v: findAllWords(pastAction)) {
+                List<CalendarEvent> subTree;
+                subTree = splitOnAttrCal(v,pastAction);
+                if ( subTree.size() == pastAction.size() || subTree.isEmpty()){
+                    continue;
                 }
-
-                String action = mostCommonAct2(pastAction);
-                return new ActionNode(action,entropy2(pastAction));
+                DecisionNode deciNode = new DecisionNode(v);
+                deciNode.children.put("true", learnSubTreeCal(subTree));
+                List<CalendarEvent> missingTree = new ArrayList<>(pastAction);
+                missingTree.removeAll(subTree);
+                deciNode.children.put("false", learnSubTreeCal(missingTree));
+                return deciNode;
             }
-            DecisionNode deciNode = new DecisionNode(attr);
 
-            for (String v: findAllWords(attr,pastAction)) {
-                Map<CalendarEvent,String> subTree = new HashMap<>();
-                subTree = splitOnAttr2(attr,v,pastAction);
-
-                deciNode.children.put(v, learnTree2(subTree));
-            }
-            return deciNode;
+            return computeDefaultTree(entropyCal(pastAction), buildRangeTreeCal(pastAction), mostCommonActCal(pastAction));
         }
-
     }
 
     /**
@@ -438,30 +447,32 @@ public class TreeDecisionControl {
      * @param pastAction
      * @return
      */
-    private static TreeNode buildRangeTree2(Map<CalendarEvent, String> pastAction) {
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private static TreeNode buildRangeTreeCal(List<CalendarEvent> pastAction) {
 
-        int size = pastAction.size();
-        if ( size < 3 ) {
-            return null;
-        }
-
-        ArrayList<CalendarEvent> events = new ArrayList<>(pastAction.keySet());
-        Collections.sort(events, (a, b)-> a.getTimeStamp() - b.getTimeStamp() );
-        String Action = pastAction.get(events.get(size - 1));
-        if ( ! Action .equals(pastAction.get(events.get(size - 2)))) {
-            return null;
-        }
-        int timeStamp = events.get(size - 2).getTimeStamp();
-        for(int i = size - 3; i > 0; i--) {
-            CalendarEvent e = events.get(i);
-            if ( ! pastAction.get(e) .equals (Action) ) {
-                break;
-            }
-
-            timeStamp = e.getTimeStamp();
-        }
-
-        return new RangeTree(timeStamp,null,new ActionNode(Action,entropy2(pastAction)));
+//        int size = pastAction.size();
+//        if ( size < 2 ) {
+//            return null;
+//        }
+//
+//        List<CalendarEvent> events = new ArrayList<>(pastAction);
+//        Collections.sort(events, (a, b)->  a.getTimeStamp().compareTo(b.getTimeStamp()) );
+//        String Action = pastAction.get(events.size()-1).getFlags();
+//        if ( ! Action .equals(pastAction.get(events.size() - 2).getFlags() ) ) {
+//            return null;
+//        }
+//        LocalDateTime timeStamp = events.get(size - 2).getTimeStamp();
+//        for(int i = size - 3; i > 0; i--) {
+//            CalendarEvent e = events.get(i);
+//            if ( ! e.getFlags() .equals (Action) ) {
+//                break;
+//            }
+//
+//            timeStamp = e.getTimeStamp();
+//        }
+//
+//        return new RangeTree(timeStamp,null,new ActionNode(Action, entropyCal(pastAction)));
+        return null;
     }
 
 
@@ -470,11 +481,13 @@ public class TreeDecisionControl {
      * @param pastAction
      * @return
      */
-    private static String mostCommonAct2(Map<CalendarEvent, String> pastAction) {
+    private static String mostCommonActCal(List<CalendarEvent> pastAction) {
         int nCount = 0;
         int rCount = 0;
         int dCount = 0;
-        for (String a: pastAction.values()) {
+        String a;
+        for (CalendarEvent e: pastAction) {
+            a = e.getFlags();
             switch (a) {
                 case "N" : nCount++; break;
                 case "R" : rCount++; break;
@@ -498,15 +511,10 @@ public class TreeDecisionControl {
      *
      * @param event
      * @param root
-     * @param userAction
-     * @param pastActions
      * @return
      */
-    private static ActionNode process2(CalendarEvent event, TreeNode root, String userAction, Map<CalendarEvent, String> pastActions) {
+    public static ActionNode processCal(CalendarEvent event, TreeNode root) {
         ActionNode action = root.performAction(event);
-        //System.out.println(Action+" "+Event);
-        pastActions.put(event,userAction);
-
         return action;
     }
 

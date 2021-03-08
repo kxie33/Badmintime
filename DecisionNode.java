@@ -1,21 +1,34 @@
 package com.example.notificationtest;
 
+import android.util.Log;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ *
+ */
 public class DecisionNode extends TreeNode {
-    String nodeValue;
-    DecisionNode left, right;
+
+    /**
+     *
+     */
     private String attribute;
     //private TreeNode defaultAction;
     Map<String,TreeNode> children = new HashMap<String,TreeNode>();
 
+    /**
+     *
+     * @param attribute
+     */
     public DecisionNode(String attribute) {
         this.attribute = attribute;
     }
 
-    private ActionNode defaultAction = new ActionNode("Notify",10);
-
+    /**
+     *
+     * @param e
+     * @return
+     */
     @Override
     public ActionNode performAction(Event e) {
         // TODO Auto-generated method stub
@@ -30,13 +43,32 @@ public class DecisionNode extends TreeNode {
         }
     }
 
+    /**
+     *
+     * @param tag
+     */
+    @Override
+    public void toLog(String tag) {
+        Log.i(tag,"Decision Node " + attribute);
+        for (String k : children.keySet())
+        {
+            Log.i(tag,"Key = " + k);
+            children.get(k).toLog(tag);
+        }
+    }
+
+    /**
+     *
+     * @param key
+     * @param Action
+     */
     public void addChild(String key, TreeNode Action) {
         children.put(key, Action);
     }
 
-    /*
+    /**
      *
-     *
+     * @return
      */
     public String toString() {
 

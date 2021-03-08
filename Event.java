@@ -1,9 +1,22 @@
 package com.example.notificationtest;
 
+import java.time.LocalDateTime;
 
+/**
+ *
+ */
 public abstract class Event {
 
+    /**
+     *
+     * @param attr
+     * @return
+     */
     public abstract String getValue(String attr);
 
-    public abstract int getTimeStamp();
+    /**
+     *
+     * @return
+     */
+    public abstract LocalDateTime getTimeStamp();
 }
