@@ -183,10 +183,18 @@ public class ClubEvent extends Event {
         return result;
     }
 
+    /**
+     *
+     * @return
+     */
     public static List<String> getAllAttrs(){
         return allAttrs;
     }
 
+    /**
+     * 
+     * @param l
+     */
     public static void setAllAttrs(List<String> l){
         for (String s: l){
             allAttrs.add(s);
