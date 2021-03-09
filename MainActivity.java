@@ -1,6 +1,7 @@
 /**
- * Copyright notice: all rights reserved to Kun Xie.
+ * Copyright notice: all rights reserved to Kun Xie, Craig Damon.
  */
+
 package com.example.notificationtest;
 
 import androidx.annotation.RequiresApi;
@@ -362,10 +363,10 @@ public class MainActivity extends AppCompatActivity {
             list.setAdapter(cursorAdapter1);
             TextView label = findViewById(R.id.thisWeek);
             if (cursor.moveToFirst()){
-                label.setText("This week's events");
+                label.setText(R.string.ThisWeekListTitle);
             }
             else{
-                label.setText("No events this week");
+                label.setText(R.string.NextWeekListTitle);
             }
         }
 
@@ -402,10 +403,10 @@ public class MainActivity extends AppCompatActivity {
             list.setAdapter(cursorAdapter2);
             TextView label = findViewById(R.id.nextWeek);
             if (cursor.moveToFirst()){
-                label.setText("Next week's events");
+                label.setText(R.string.ThisWeekListTitle);
             }
             else{
-                label.setText("No events next week");
+                label.setText(R.string.NextWeekListTitle);
             }
         }
     }
@@ -420,6 +421,7 @@ public class MainActivity extends AppCompatActivity {
         Uri uriCalTree = uri.parse("content://com.example.notificationtest.DataManager/CalendarTree");
         cr.query(uriClubTree,null,null,null);
         cr.query(uriCalTree,null,null,null);
+
     }
 
     /**

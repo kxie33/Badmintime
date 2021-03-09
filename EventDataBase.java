@@ -12,8 +12,8 @@ import androidx.room.TypeConverters;
 public abstract class EventDataBase extends RoomDatabase  {
 
     /**
-     *
-     * @return
+     * This is the room database method to setup the event dao
+     * @return ClubEventDoa
      */
     public abstract ClubEventDao clubEventDao();
 }
