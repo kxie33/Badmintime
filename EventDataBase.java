@@ -7,7 +7,7 @@ import androidx.room.TypeConverters;
 /**
  *
  */
-@Database(entities = {ClubEvent.class}, version = 13,exportSchema = false)
+@Database(entities = {ClubEvent.class}, version = 14,exportSchema = false)
 @TypeConverters({Converters.class})
 public abstract class EventDataBase extends RoomDatabase  {
 

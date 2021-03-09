@@ -69,6 +69,8 @@ public class ClubEvent extends Event {
     private Uri clubCalUri; // the result uri after inserting this club event into Android Calendar
     @ColumnInfo
     private int clubCaleventID; // the ID associate this club event with the same club event inserted into Android Calendar
+    @ColumnInfo
+    private static List<String> allAttrs;
     @Ignore
     private Context ctx;
     private final static Calendar cal = Calendar.getInstance();
@@ -181,13 +183,14 @@ public class ClubEvent extends Event {
         return result;
     }
 
-    public List<String> getAllAtrs(){
-        List<String> result = new ArrayList<>();
-        result.add("Start");
-        result.add("End");
-        result.add("clubName");
-        result.add("dayOfWeek");
-        return result;
+    public static List<String> getAllAttrs(){
+        return allAttrs;
+    }
+
+    public static void setAllAttrs(List<String> l){
+        for (String s: l){
+            allAttrs.add(s);
+        }
     }
 
     /**
