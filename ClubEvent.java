@@ -192,7 +192,7 @@ public class ClubEvent extends Event {
     }
 
     /**
-     * 
+     *
      * @param l
      */
     public static void setAllAttrs(List<String> l){

@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 
 /**
- *
+ * Class: EventDataBase. This class is the room database interface.
  */
 @Database(entities = {ClubEvent.class}, version = 14,exportSchema = false)
 @TypeConverters({Converters.class})
